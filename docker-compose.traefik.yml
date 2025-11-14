@@ -1,0 +1,61 @@
+# Docker Compose file with Traefik labels for CLI Proxy API
+# This extends your existing docker-compose.yml
+
+version: '3.8'
+
+services:
+  cli-proxy-api:
+    image: ${CLI_PROXY_IMAGE:-eceasy/cli-proxy-api:latest}
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    container_name: cli-proxy-api
+    environment:
+      DEPLOY: ${DEPLOY:-}
+    ports:
+      # Remove port mappings if using Traefik
+      # - "8317:8317"
+      # - "8085:8085"
+      # - "1455:1455"
+      # - "54545:54545"
+      # - "11451:11451"
+    volumes:
+      - ./config.yaml:/CLIProxyAPI/config.yaml
+      - ./auths:/root/.cli-proxy-api
+      - ./logs:/CLIProxyAPI/logs
+    restart: unless-stopped
+    networks:
+      - traefik-network
+    labels:
+      # Traefik configuration
+      - "traefik.enable=true"
+      
+      # HTTP router (redirects to HTTPS)
+      - "traefik.http.routers.cli-proxy-api.rule=Host(`gpt51-api.yourdomain.com`)"  # ⚠️ Change this
+      - "traefik.http.routers.cli-proxy-api.entrypoints=web"
+      
+      # HTTPS router
+      - "traefik.http.routers.cli-proxy-api-secure.rule=Host(`gpt51-api.yourdomain.com`)"  # ⚠️ Change this
+      - "traefik.http.routers.cli-proxy-api-secure.entrypoints=websecure"
+      - "traefik.http.routers.cli-proxy-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cli-proxy-api-secure.tls=true"
+      
+      # Service definition
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.port=8317"
+      
+      # Headers middleware
+      - "traefik.http.middlewares.cli-proxy-api-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.cli-proxy-api-secure.middlewares=cli-proxy-api-headers"
+      
+      # WebSocket support
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.scheme=http"
+
+networks:
+  traefik-network:
+    external: true  # Create this network: docker network create traefik-network
+

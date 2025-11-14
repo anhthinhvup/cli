@@ -1,0 +1,18 @@
+NGROK PUBLIC URL:
+https://3af3367340d8.ngrok-free.app
+
+Forwarding: https://3af3367340d8.ngrok-free.app -> http://localhost:8317
+
+Cập nhật vào New API (langhit.com):
+- Vào Channels -> Chọn channel GPT-5.1
+- Cập nhật Base URL: https://3af3367340d8.ngrok-free.app
+- Save
+
+Test API:
+curl https://3af3367340d8.ngrok-free.app/v1/models -H "Authorization: Bearer your-api-key-1"
+
+Lưu ý:
+- URL này sẽ thay đổi mỗi lần restart ngrok
+- Giữ ngrok chạy để langhit.com có thể truy cập
+- Xem chi tiết: http://localhost:4040
+

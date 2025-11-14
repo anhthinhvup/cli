@@ -1,0 +1,91 @@
+# Traefik configuration for CLI Proxy API
+# This is a Docker Compose compatible Traefik setup
+
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.11
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      # Enable Docker provider
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      
+      # Enable API and dashboard
+      - "--api.dashboard=true"
+      - "--api.insecure=true"  # Set to false and use auth in production
+      
+      # Entrypoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      
+      # Redirect HTTP to HTTPS
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      
+      # SSL/TLS
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=your-email@example.com"  # Change this
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      
+      # Logging
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      
+      # Global settings
+      - "--global.checknewversion=false"
+      - "--global.sendanonymoususage=false"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.yourdomain.com`)"  # Change this
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
+
+  cli-proxy-api:
+    # Use your existing cli-proxy-api service
+    # Add these labels to your existing docker-compose.yml
+    labels:
+      - "traefik.enable=true"
+      
+      # HTTP router (redirects to HTTPS)
+      - "traefik.http.routers.cli-proxy-api.rule=Host(`gpt51-api.yourdomain.com`)"  # Change this
+      - "traefik.http.routers.cli-proxy-api.entrypoints=web"
+      
+      # HTTPS router
+      - "traefik.http.routers.cli-proxy-api-secure.rule=Host(`gpt51-api.yourdomain.com`)"  # Change this
+      - "traefik.http.routers.cli-proxy-api-secure.entrypoints=websecure"
+      - "traefik.http.routers.cli-proxy-api-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.cli-proxy-api-secure.tls=true"
+      
+      # Service definition
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.port=8317"
+      
+      # Middleware for headers
+      - "traefik.http.middlewares.cli-proxy-api-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.cli-proxy-api-secure.middlewares=cli-proxy-api-headers"
+      
+      # Timeouts (for long-running requests)
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.healthcheck.path=/"
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.healthcheck.interval=30s"
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.healthcheck.timeout=10s"
+      
+      # WebSocket support
+      - "traefik.http.services.cli-proxy-api.loadbalancer.server.scheme=http"
+      - "traefik.http.routers.cli-proxy-api-secure.service=cli-proxy-api"
+
+networks:
+  traefik-network:
+    external: true  # Create this network first: docker network create traefik-network
+
