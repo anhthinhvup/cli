@@ -21,9 +21,9 @@ remote-management:
 # Authentication directory
 auth-dir: "~/.cli-proxy-api"
 
-# API keys
+# API keys (set via environment variable or edit manually)
 api-keys:
-  - "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"
+  - "${API_KEY:-your-api-key-here}"
 
 # Enable debug logging
 debug: false
@@ -80,7 +80,7 @@ if docker-compose ps | grep -q "Up"; then
     echo "  docker-compose logs -f"
     echo ""
     echo "To test API:"
-    echo "  curl http://localhost:8317/v1/models -H 'Authorization: Bearer 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'"
+    echo "  curl http://localhost:8317/v1/models -H 'Authorization: Bearer YOUR_API_KEY'"
     echo ""
 else
     echo ""
